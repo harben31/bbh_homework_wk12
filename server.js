@@ -1,10 +1,9 @@
 const inquirer = require('inquirer');
 const mysql = require('mysql');
 
-const Employee = require('Employee');
-const Role = requestAnimationFrame('Role');
-const Department = require('Department');
-const { stat } = require('node:fs');
+const Employee = require('./lib/employee');
+const Role = require('./lib/role')
+const Department = require('./lib/department');
 
 const db = mysql.createConnection({
     host: 'localhost',
@@ -27,7 +26,7 @@ const start = ()=>{
         if(data.greeting==='edit_roster'){
             //editRoster()
         } else {
-            // viewRoster()
+            viewRoster()
         }
     })
     .catch((err)=>{if(err) throw err})
@@ -47,18 +46,28 @@ const viewRoster = () => {
             ]
         }
     ]).then((data) => {
+        let cat;
         if(data.viewBy==='by_manager'){
-            //viewByMgr()
+            cat = 'mgmt'
         } else if(data.view==='by_dept'){
-            //viewByDept
+            cat = 'dept'
         } else if(data.viewBy==='by_role'){
-            //viewByRole()
+            cat = 'roles'
         } else {
-            //viewByEmp()
+            cat = 'emp_info'
         }
+        viewBy(cat)
     })
     .catch((err)=>{if(err) throw err})
 }
+
+const viewBy = (cat) => {
+    db.query(`SELECT * FROM ${cat}`,
+    (err, res)=>{
+        if(err)throw err;
+        console.log(res);
+    });
+};
 
 const editRoster = () => {
     inquirer.prompt([
@@ -100,4 +109,7 @@ const editRoster = () => {
     .catch((err)=>{if(err)throw err})
 }
 
-start()
+db.connect((err)=>{
+    if(err)throw err;
+    start()
+});
