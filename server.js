@@ -44,6 +44,12 @@ INNER JOIN dept d
 	ON emp.dept_id = d.id
 WHERE mgr.id = ?;`
 
+const rolesTotQuery = `SELECT  r.title, concat(emp.first_name, ' ', emp.last_name) AS employees   
+FROM emp_info emp
+INNER JOIN roles r
+	ON emp.role_id = r.id
+WHERE r.title = ?;`
+
 const deptTotQuery = `SELECT d.dept_name, concat(mgr.first_name,' ', mgr.last_name) AS dept_manager, concat(emp.first_name, emp.last_name) AS dept_employees  
 FROM emp_info emp
 LEFT JOIN emp_info  mgr
@@ -93,7 +99,7 @@ const viewRoster = () => {
             // viewDept()
             cat = deptTotQuery;
         } else if(data.viewBy==='by_role'){
-            //viewRoles();
+            viewRoles();
             cat = 'roles';
         } else if(data.viewBy==='by_employee'){
             // viewEmp()
@@ -145,7 +151,45 @@ const viewMgr = () => {
             })
         });
         // db.end(); ends fn before query can fire
-}
+};
+
+const viewRoles = () => {
+    db.query(`SELECT * FROM roles`, 
+    (err, res)=>{
+        if(err)throw err;
+        inquirer
+            .prompt([
+                {
+                    type: 'rawlist',
+                    name: 'roles',
+                    message: 'Select role to view',
+                    choices(){
+                        const titleArr = []; //add view all mgr 
+
+                        res.forEach(({ title })=>{
+                            titleArr.push(title)
+                        })
+                        return titleArr
+                    }
+                }
+            ])
+            .then((data)=>{
+                console.log(data)
+                res.forEach((roles) =>{
+                    if(roles.title===data.roles){
+                        db.query(rolesTotQuery, 
+                            data.roles,
+                            (err, res)=>{
+                                if(err) throw err;
+                                console.table(res);
+                            })
+            
+                    }
+                })
+            })
+        });
+        // db.end(); ends fn before query can fire
+};
 
 const viewBy = (cat) => {
     db.query(cat,
