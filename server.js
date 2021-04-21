@@ -32,7 +32,8 @@ LEFT JOIN emp_info  mgr
 INNER JOIN roles r
 	ON emp.role_id = r.id
 INNER JOIN dept d
-	ON emp.dept_id = d.id;`
+	ON emp.dept_id = d.id
+WHERE emp.id = ?;`
 
 const mgrTotQuery = `SELECT concat(mgr.first_name,' ', mgr.last_name) AS manager, d.dept_name, concat(emp.first_name, ' ', emp.last_name, ' ', r.title) AS subordinates   
 FROM emp_info emp
@@ -50,13 +51,13 @@ INNER JOIN roles r
 	ON emp.role_id = r.id
 WHERE r.title = ?;`
 
-const deptTotQuery = `SELECT d.dept_name, concat(mgr.first_name,' ', mgr.last_name) AS dept_manager, concat(emp.first_name, emp.last_name) AS dept_employees  
+const deptTotQuery = `SELECT d.dept_name, concat(mgr.first_name,' ', mgr.last_name) AS dept_manager, concat(emp.first_name, ' ', emp.last_name) AS dept_employees  
 FROM emp_info emp
 LEFT JOIN emp_info  mgr
 	ON emp.manager_id = mgr.id
 INNER JOIN dept d
 	ON emp.dept_id = d.id
-ORDER BY d.id;`
+WHERE dept_name = ?;`
 
 const start = ()=>{
     inquirer.prompt([
@@ -96,16 +97,17 @@ const viewRoster = () => {
             viewMgr()
             cat = mgrTotQuery;
         } else if(data.viewBy==='by_dept'){
-            // viewDept()
+            viewDept()
             cat = deptTotQuery;
         } else if(data.viewBy==='by_role'){
             viewRoles();
+            // viewFn('roles', 'title', rolesTotQuery)
             cat = 'roles';
         } else if(data.viewBy==='by_employee'){
-            // viewEmp()
+            viewEmp()
             cat = 'emp_info WHERE manager_id'
         } else {
-            //viewAllEmp()
+            viewAllEmp()
             cat = allEmpTotQuery;
         }
         // viewBy(cat);
@@ -153,6 +155,86 @@ const viewMgr = () => {
         // db.end(); ends fn before query can fire
 };
 
+// const viewFn = (dbTable, column, sqlQuery) => {
+
+//     db.query(`SELECT * FROM ${dbTable}`, // var 1
+//     (err, res)=>{
+//         x=column;
+//         if(err)throw err;
+//         console.log(res)
+//         inquirer
+//             .prompt([
+//                 {
+//                     type: 'rawlist',
+//                     name: dbTable, //var 1
+//                     message: `Select ${dbTable} to view`, //var 1
+//                     choices(){
+//                         const arr = []; //add view all mgr 
+
+//                         res.forEach(({ x })=>{ //var 2
+//                             arr.push( x ) //var 2
+//                         })
+//                         return arr
+//                     }
+//                 }
+//             ])
+//             .then((data)=>{
+//                 console.log(data)
+//                 res.forEach((dbTable) =>{ //var 1
+//                     if(dbTable.x===data.dbTable){//var 1 .. var 1
+//                         db.query(sqlQuery, //var 3
+//                             data.dbTable, //var 1
+//                             (err, res)=>{
+//                                 if(err) throw err;
+//                                 console.table(res);
+//                             })
+            
+//                     }
+//                 })
+//             })
+//             .catch((err)=>{if(err) throw err})
+//         });
+//         // db.end(); ends fn before query can fire
+// };
+
+const viewDept = () => {
+    db.query(`SELECT * FROM dept`, 
+    (err, res)=>{
+        if(err)throw err;
+        inquirer
+            .prompt([
+                {
+                    type: 'rawlist',
+                    name: 'dept',
+                    message: 'Select dept to view',
+                    choices(){
+                        const arr = []; //add view all mgr 
+
+                        res.forEach(({ dept_name })=>{
+                            arr.push(dept_name)
+                        })
+                        return arr
+                    }
+                }
+            ])
+            .then((data)=>{
+                console.log(data)
+                res.forEach((dept) =>{
+                    if(dept.dept_name===data.dept){
+                        db.query(deptTotQuery, 
+                            data.dept,
+                            (err, res)=>{
+                                if(err) throw err;
+                                console.table(res);
+                            })
+            
+                    }
+                })
+            })
+        });
+        // db.end(); ends fn before query can fire
+};
+
 const viewRoles = () => {
     db.query(`SELECT * FROM roles`, 
     (err, res)=>{
@@ -162,14 +244,14 @@ const viewRoles = () => {
                 {
                     type: 'rawlist',
                     name: 'roles',
-                    message: 'Select role to view',
+                    message: 'Select roles to view',
                     choices(){
-                        const titleArr = []; //add view all mgr 
+                        const arr = []; //add view all mgr 
 
                         res.forEach(({ title })=>{
-                            titleArr.push(title)
+                            arr.push(title)
                         })
-                        return titleArr
+                        return arr
                     }
                 }
             ])
@@ -191,16 +273,96 @@ const viewRoles = () => {
         // db.end(); ends fn before query can fire
 };
 
-const viewBy = (cat) => {
-    db.query(cat,
-        
+const viewAllEmp = () => {
+    db.query(`SELECT * FROM emp_info`, 
     (err, res)=>{
         if(err)throw err;
-        console.log(res);
-        console.table(res);
-    });
-    db.end();
+        inquirer
+            .prompt([
+                {
+                    type: 'rawlist',
+                    name: 'emp_info',
+                    message: 'Select employee to view',
+                    choices(){
+                        const arr = []; //add view all mgr 
+
+                        res.forEach(({ first_name, last_name })=>{
+                            arr.push(first_name+' '+last_name);
+                        });
+                        return arr
+                    }
+                }
+            ])
+            .then((data)=>{
+                console.log(data)
+                res.forEach((emp_info) =>{
+                    const dbQuery = emp_info.first_name.toLowerCase()+ ' '+emp_info.last_name.toLowerCase();
+                    const inqAns = data.emp_info.toLowerCase()
+                    if(dbQuery===inqAns){
+                        db.query(allEmpTotQuery,
+                            emp_info.id,
+                            (err, res)=>{
+                                if(err) throw err;
+                                console.table(res);
+                            })
+            
+                    }
+                })
+            })
+        });
+        // db.end(); ends fn before query can fire
 };
+
+const viewEmp = () => {
+    db.query(`SELECT * FROM emp_info WHERE manager_id`, 
+    (err, res)=>{
+        if(err)throw err;
+        inquirer
+            .prompt([
+                {
+                    type: 'rawlist',
+                    name: 'emp_info',
+                    message: 'Select employee to view',
+                    choices(){
+                        const arr = []; //add view all mgr 
+
+                        res.forEach(({ first_name, last_name })=>{
+                            arr.push(first_name+' '+last_name)
+                        })
+                        return arr
+                    }
+                }
+            ])
+            .then((data)=>{
+                console.log(data)
+                res.forEach((emp_info) =>{
+                    const dbQuery = emp_info.first_name.toLowerCase()+ ' '+emp_info.last_name.toLowerCase();
+                    const inqAns = data.emp_info.toLowerCase()
+                    if(dbQuery===inqAns){
+                        db.query(allEmpTotQuery, 
+                            emp_info.id,
+                            (err, res)=>{
+                                if(err) throw err;
+                                console.table(res);
+                            })
+            
+                    }
+                })
+            })
+        });
+        // db.end(); ends fn before query can fire
+};
+
+// const viewBy = (cat) => {
+//     db.query(cat,
+        
+//     (err, res)=>{
+//         if(err)throw err;
+//         console.log(res);
+//         console.table(res);
+//     });
+//     db.end();
+// };
 
 const editRoster = () => {
     inquirer.prompt([
@@ -220,7 +382,8 @@ const editRoster = () => {
             message: 'What action would you like to take?',
             choices: [
                 'add_to',
-                'delete_from'
+                'delete_from',
+                'update'
             ]
         }
     ])
