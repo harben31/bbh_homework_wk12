@@ -186,7 +186,68 @@ const viewFn = (dbTable, sqlQueryOne, sqlQueryTwo) => {
 
 };
 
-const editTable = (action, table) => {
+const colEditFn = (dta, tbl, id) => {
+    let colEditQuest;
+    switch(dta){
+        case 'manager_id' || 'id' || 'dept_id '||'role_id':
+            colEditQuest = {
+                type: 'number',
+                name: 'colChange',
+                message: 'Enter new data'
+            };
+            break;
+        default: 
+            colEditQuest = {
+                type: 'input',
+                name: 'colChange',
+                message: 'Enter new data'
+            }
+    }
+
+    inquirer
+        .prompt([
+            colEditQuest
+        ]).then((data)=>{
+            db.query(`UPDATE ${tbl} SET ${dta} = '${data.colChange}' WHERE ${tbl}.id = ${id}`, (err, res) => {
+                if(err) throw err;
+            })
+            db.end();
+        }).catch((err)=>{if(err) throw err})
+}
+
+const colPickFn = (tbl, id) => {
+    db.query(`SELECT COLUMN_NAME  
+                FROM INFORMATION_SCHEMA.COLUMNS
+                WHERE TABLE_NAME = N'${tbl}'; `,
+                // table,
+                (err, res) => {
+                    if(err) throw err;
+                    inquirer
+                    .prompt([
+                        {
+                            type: 'rawlist',
+                            name: 'colPick',
+                            message: 'Where would you like to make a change?',
+                            choices(){
+                                const arr = [];
+                                
+                                res.forEach(({ COLUMN_NAME }) => {
+                                    console.log( COLUMN_NAME );
+                                    arr.push( COLUMN_NAME );
+                                })
+                                arr.shift();
+                                return arr
+                            }
+                        }
+                    ]).then((data)=>{
+
+                        colEditFn(data.colPick, tbl, id);
+
+                    }).catch((err)=>{if(err) throw err})
+                })
+}
+
+const editTable = (action, table) => { //1st fn
     console.log(action, table);
 
     let tabIdent;
@@ -200,7 +261,7 @@ const editTable = (action, table) => {
     }
 
   
-    db.query(`SELECT ${ tabIdent } FROM ${ table }`,
+    db.query(`SELECT ${ tabIdent }, id FROM ${ table }`,
     (err, res) => {
         if(err) throw err;
 
@@ -226,42 +287,151 @@ const editTable = (action, table) => {
                                 case 'roles':
                                     arr.push(x.title);
                                     break;
-                            }
+                            };
                         });
                         return arr
                     }
                 }
-            ]).then((data)=>{
-                db.query(`SELECT COLUMN_NAME
-                FROM INFORMATION_SCHEMA.COLUMNS
-                WHERE TABLE_NAME = N'${table}'; `,
-                // table,
-                (err, res) => {
-                    if(err) throw err;
-                    inquirer
-                    .prompt([
-                        {
-                            type: 'rawlist',
-                            name: 'colPick',
-                            message: 'Where would you like to make a change?',
-                            choices(){
-                                const arr = [];
-                                
-                                res.forEach(({ COLUMN_NAME }) => {
-                                    console.log( COLUMN_NAME );
-                                    arr.push( COLUMN_NAME );
-                                })
-                                arr.shift();
-                                return arr
-                            }
-                        }
-                    ]).then((data)=>{
+            ]).then((data)=>{ 
+                console.log('272 data', data);
+                console.log('273 res', res)
+                res.forEach((rows) =>{ //var 1
+                    let dbQuery;
+                switch(table){
+                    case 'emp_info':
+                        dbQuery = `${rows.first_name} ${rows.last_name}`;
+                        break;
+                    case 'dept':
+                        dbQuery = rows.dept_name;
+                        break;
+                    case 'roles':
+                        dbQuery = rows.title;
+                        break;
+                };
+                    
+                    if(dbQuery===data.rowSelect){//var 1 .. var 1
+                        // console.log('true')
 
-                    }).catch((err)=>{if(err) throw err})
+                        if(action==='delete_from'){
+                            console.log('delete')
+                            deleteFn(table, rows.id);
+                        } else if(action==='add_to'){
+                            console.log('add')
+                            //addFn(table)
+                        } else {
+                            colPickFn(table, rows.id);
+                            console.log('s89 success', rows.id);
+                        };
+                    };
                 })
+            
             }).catch((err)=>{if(err) throw err})
     })
     
+}
+
+const deleteFn = (tbl, rowId) => {
+    db.query(`DELETE FROM ${tbl} WHERE id=${rowId}`,
+    (err, res) => {
+        if(err) throw err;
+        console.log(res)
+    });
+    db.end()
+};
+
+
+//needs to be cleaned. addQuery wont work until .then
+// const addFn = (tbl) => {
+
+    let addQuest;
+    let addQuery;
+
+    if(tbl==='roles'){
+        addQuest = [{
+            type: 'input',
+            name: 'rolesTitle',
+            message: 'Enter new title',
+        },
+        {
+            type: 'number',
+            name: 'rolesSalary',
+            message: 'Enter salary for new role'
+        },
+        {
+            type: 'list',
+            name: 'isMgr',
+            message: 'Is this role a managerial role?',
+            choices: ['yes', 'no']
+        },
+        {
+            type: 'number',
+            name: 'rolesManagerId',
+            message: 'Enter assigned managers ID number',
+            when: (answers)=>answers.isMgr==='no'
+        },
+        {
+            type: 'number',
+            name: 'rolesDeptId',
+            message: 'Enter the ID number for the department this new role will be assigned'
+        }]
+
+        addQuery = `INSERT INTO roles (title, dept_id, manager_id, salary)
+        VALUES ("${data.rolesNumber}", ${data.rolesDeptId}, null, ${data.rolesSalary})` 
+
+    } else if (tbl==='emp_info'){
+        addQuest = [{
+            type: 'input',
+            name: 'empFirstName',
+            message: 'Enter new employees first name'
+        },
+        {
+            type: 'input',
+            name: 'empLastName',
+            message: 'Enter new employees last name'
+        },
+        {
+            type: 'number',
+            name: 'empDept',
+            message: 'Enter the ID number for the new employees assigned dept'
+        },
+        {
+            type: 'number',
+            name: 'empRoleId',
+            message: 'Enter ID number for the new employees role'
+        },
+        {
+            type: 'list',
+            name: 'isMgr',
+            message: 'Is this Employee a manager?',
+            choices: ['yes', 'no']
+        },
+        {
+            type: 'number',
+            name: 'empMgrId',
+            message: 'Enter new employees assigned manager\'s Id',
+            where: (answers) => answers.isMgr === 'no'
+        }];
+
+    let mgrId;    
+    if(data.isMgr==='yes'){
+        mgrId = NULL;
+    } else {
+        mgrId = data.empMgrId;
+    }
+    addQuery = `INSERT INTO emp_info (first_name, last_name, role_id, manager_id, dept_id)
+    VALUES ("${data.empFirstName}", "${data.empLastName}", ${data.empRoleId}, ${isMgr}, ${data.empDept})`
+    } else if (tbl==='dept'){
+        addQuest = [
+            {
+                type: 'input',
+                name: 'newDept',
+                message: 'Enter name of new department'
+            },
+        ];
+
+        addQuery = `INSERT INTO dept (dept_name)
+        VALUES ("${data.newDept}")`
+    }
 }
 
 const editRoster = () => {
@@ -288,6 +458,7 @@ const editRoster = () => {
         }
     ])
     .then((data)=>{
+
         let tabVar;
         if(data.tableEdit==='Departments'){
             tabVar = 'dept'
@@ -296,10 +467,11 @@ const editRoster = () => {
         } else if(data.tableEdit==='Employees') {
             tabVar = 'emp_info'
         } 
+
         console.log(tabVar)
         editTable(data.editType, tabVar)
     })
-    .catch((err)=>{if(err)throw err})
+    .catch((err)=>{if(err)throw err});
 }
 
 db.connect((err)=>{
