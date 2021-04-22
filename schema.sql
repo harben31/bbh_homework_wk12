@@ -6,7 +6,6 @@ USE employees_DB;
 CREATE TABLE dept(
     id INT NOT NULL AUTO_INCREMENT,
     dept_name VARCHAR(30) NOT NULL,
-    manager_id INT,
     PRIMARY KEY (id) 
 );
 
@@ -30,8 +29,8 @@ CREATE TABLE emp_info(
 );
 
 
-INSERT INTO dept (dept_name, manager_id)
-VALUES ("accounting", 1),  ("engineering", 2), ("legal", 3);
+INSERT INTO dept (dept_name
+VALUES ("accounting"),  ("engineering"), ("legal");
 
 INSERT INTO roles (title, dept_id, manager_id, salary)
 VALUES ("Lead Acct", 1, null, 111000),("Lead Engineer", 2, null, 222000), ("Lead Lawer", 3, null, 333000), 

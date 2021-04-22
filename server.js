@@ -1,3 +1,12 @@
+//TODO
+// consolodate view fns & rewrite sql qrys
+//add method to view all
+//write sql for delete and update
+//modularize edit fn better?
+
+
+
+
 const inquirer = require('inquirer');
 const mysql = require('mysql');
 const cTable = require('console.table')
@@ -69,7 +78,7 @@ const start = ()=>{
         }
     ]).then((data)=>{
         if(data.greeting==='edit_roster'){
-            //editRoster()
+            editRoster()
         } else {
             viewRoster()
         }
@@ -169,7 +178,7 @@ const viewMgr = () => {
 //                     name: dbTable, //var 1
 //                     message: `Select ${dbTable} to view`, //var 1
 //                     choices(){
-//                         const arr = []; //add view all mgr 
+//                         const arr = []; 
 
 //                         res.forEach(({ x })=>{ //var 2
 //                             arr.push( x ) //var 2
@@ -181,7 +190,7 @@ const viewMgr = () => {
 //             .then((data)=>{
 //                 console.log(data)
 //                 res.forEach((dbTable) =>{ //var 1
-//                     if(dbTable.x===data.dbTable){//var 1 .. var 1
+//                     if(dbTable[x]===data[dbTable]){//var 1 .. var 1
 //                         db.query(sqlQuery, //var 3
 //                             data.dbTable, //var 1
 //                             (err, res)=>{
@@ -197,6 +206,7 @@ const viewMgr = () => {
 //         // db.end(); ends fn before query can fire
 // };
 
+/*consolodate w/ rolesfn*/
 const viewDept = () => {
     db.query(`SELECT * FROM dept`, 
     (err, res)=>{
@@ -208,7 +218,7 @@ const viewDept = () => {
                     name: 'dept',
                     message: 'Select dept to view',
                     choices(){
-                        const arr = []; //add view all mgr 
+                        const arr = []; //add view all
 
                         res.forEach(({ dept_name })=>{
                             arr.push(dept_name)
@@ -336,7 +346,7 @@ const viewEmp = () => {
             .then((data)=>{
                 console.log(data)
                 res.forEach((emp_info) =>{
-                    const dbQuery = emp_info.first_name.toLowerCase()+ ' '+emp_info.last_name.toLowerCase();
+                    const dbQuery = emp_info.first_name.toLowerCase()+ ' ' +emp_info.last_name.toLowerCase();
                     const inqAns = data.emp_info.toLowerCase()
                     if(dbQuery===inqAns){
                         db.query(allEmpTotQuery, 
@@ -345,12 +355,13 @@ const viewEmp = () => {
                                 if(err) throw err;
                                 console.table(res);
                             })
-            
                     }
                 })
+                db.end(); 
             })
         });
-        // db.end(); ends fn before query can fire
+       
+        //ends fn before query can fire
 };
 
 // const viewBy = (cat) => {
@@ -364,11 +375,96 @@ const viewEmp = () => {
 //     db.end();
 // };
 
+//edit or view -> edit -> table to edit -> 
+
+const editTable = (action, table) => {
+    console.log(action, table);
+
+    let tabIdent;
+    let empTabIdent;
+    if(table==='dept'){
+        tabIdent = 'dept_name'
+    } else if (table==='roles'){
+        tabIdent = 'title';
+    } else if(table==='emp_info'){
+        tabIdent = 'first_name, last_name',
+        empTabIdent = ['first_name']['last_name'];
+    }
+
+  
+    db.query(`SELECT ${ tabIdent } FROM ${ table }`,
+    // [tabIdent, table],
+    (err, res) => {
+        if(err) throw err;
+        
+        console.log('line  384 ' + tabIdent+' '+table)
+        inquirer
+            .prompt([
+                {
+                    type: 'rawlist',
+                    name: 'rowSelect',
+                    message: 'Where would you like to make a change?',
+                
+                    choices(){
+                        arr = [];
+
+                        res.forEach(( x )=>{
+                            console.log(x);
+
+                            switch(table){
+                                case 'emp_info':
+                                    arr.push(`${x.first_name} ${x.last_name}`);
+                                    break;
+                                case 'dept':
+                                    arr.push(x.dept_name);
+                                    break;
+                                case 'roles':
+                                    arr.push(x.title);
+                                    break;
+                            }
+                        });
+                        return arr
+                    }
+                }
+            ]).then((data)=>{
+                db.query(`SELECT COLUMN_NAME
+                FROM INFORMATION_SCHEMA.COLUMNS
+                WHERE TABLE_NAME = N'${table}'; `,
+                // table,
+                (err, res) => {
+                    if(err) throw err;
+                    console.log(res)
+                    inquirer
+                    .prompt([
+                        {
+                            type: 'rawlist',
+                            name: 'colPick',
+                            message: 'Where would you like to make a change?',
+                            choices(){
+                                const arr = [];
+                                
+                                res.forEach(({ COLUMN_NAME }) => {
+                                    console.log(COLUMN_NAME);
+                                    arr.push( COLUMN_NAME );
+                                })
+                                arr.shift();
+                                return arr
+                            }
+                        }
+                    ]).then((data)=>{
+                        
+                    }).catch((err)=>{if(err) throw err})
+                })
+            }).catch((err)=>{if(err) throw err})
+    })
+    
+}
+
 const editRoster = () => {
     inquirer.prompt([
         {
             type: 'list',
-            name: 'editBy',
+            name: 'tableEdit',
             message: 'What would you like to edit?',
             choices: [
                 'Departments',
@@ -388,19 +484,16 @@ const editRoster = () => {
         }
     ])
     .then((data)=>{
-        if(data.editBy==='Departments' && data.editType==='add_to'){
-            //addToDept()
-        } else if(data.editBy==='Departments' && data.editType==='delete_from'){
-            //deleteFromDept
-        }else if(data.editBy==='Roles' && data.editType==='add_to'){
-            //addToRoles()
-        } else if(data.editBy==='Roles' && data.editType==='delete_from'){
-            //deleteFromRoles()
-        } else if(data.editBy==='Employees' && data.editType==='add_to') {
-            // addToEmp()
-        } else if(data.editBy==='Employees' && data.editType==='delete_from'){
-            //deleteFromEmp()
-        }
+        let tabVar;
+        if(data.tableEdit==='Departments'){
+            tabVar = 'dept'
+        } else if(data.tableEdit==='Roles'){
+            tabVar = 'roles'
+        } else if(data.tableEdit==='Employees') {
+            tabVar = 'emp_info'
+        } 
+        console.log(tabVar)
+        editTable(data.editType, tabVar)
     })
     .catch((err)=>{if(err)throw err})
 }
