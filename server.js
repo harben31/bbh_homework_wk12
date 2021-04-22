@@ -3,6 +3,7 @@
 //add method to view all
 //write sql for delete and update
 //modularize edit fn better?
+//write add fn & delete fn
 
 
 
@@ -54,19 +55,19 @@ INNER JOIN dept d
 	ON emp.dept_id = d.id
 WHERE mgr.id = ?;`
 
-const rolesTotQuery = `SELECT  r.title, concat(emp.first_name, ' ', emp.last_name) AS employees   
+const rolesTotQuery = `SELECT  r.title, concat(emp.first_name, ' ', emp.last_name) AS employees, emp.id AS employee_id   
 FROM emp_info emp
 INNER JOIN roles r
 	ON emp.role_id = r.id
-WHERE r.title = ?;`
+WHERE r.id = ?;`
 
-const deptTotQuery = `SELECT d.dept_name, concat(mgr.first_name,' ', mgr.last_name) AS dept_manager, concat(emp.first_name, ' ', emp.last_name) AS dept_employees  
+const deptTotQuery = `SELECT d.dept_name, concat(mgr.first_name,' ', mgr.last_name) AS dept_manager, concat(emp.first_name, ' ', emp.last_name) AS dept_employees, emp.id AS employee_id
 FROM emp_info emp
 LEFT JOIN emp_info  mgr
 	ON emp.manager_id = mgr.id
 INNER JOIN dept d
 	ON emp.dept_id = d.id
-WHERE dept_name = ?;`
+WHERE d.id = ?;`
 
 const start = ()=>{
     inquirer.prompt([
@@ -103,279 +104,87 @@ const viewRoster = () => {
     ]).then((data) => {
         let cat;
         if(data.viewBy==='by_manager'){
-            viewMgr()
-            cat = mgrTotQuery;
+            viewFn('emp_info', `SELECT * FROM emp_info WHERE manager_id IS NULL`, mgrTotQuery);
         } else if(data.viewBy==='by_dept'){
-            viewDept()
-            cat = deptTotQuery;
+            viewFn('dept', `SELECT * FROM dept`, deptTotQuery);
         } else if(data.viewBy==='by_role'){
-            viewRoles();
-            // viewFn('roles', 'title', rolesTotQuery)
-            cat = 'roles';
+            viewFn('roles', `SELECT * FROM roles` , rolesTotQuery);
         } else if(data.viewBy==='by_employee'){
-            viewEmp()
-            cat = 'emp_info WHERE manager_id'
+            viewFn('emp_info', `SELECT * FROM emp_info WHERE manager_id`, rolesTotQuery);
         } else {
-            viewAllEmp()
-            cat = allEmpTotQuery;
+            viewFn('emp_info', `SELECT * FROM emp_info`, allEmpTotQuery);
         }
-        // viewBy(cat);
     })
     .catch((err)=>{if(err) throw err})
 }
 
-const viewMgr = () => {
-    db.query(`SELECT * FROM emp_info WHERE manager_id IS NULL`, 
+const viewFn = (dbTable, sqlQueryOne, sqlQueryTwo) => {
+
+    db.query(sqlQueryOne, // var 1
     (err, res)=>{
         if(err)throw err;
+        console.log(res)
         inquirer
             .prompt([
                 {
                     type: 'rawlist',
-                    name: 'mgrFullName',
-                    message: 'Select manager to view',
+                    name: dbTable, //var 1
+                    message: `Select ${dbTable} to view`, //var 1
                     choices(){
-                        const nameArr = []; //add view all mgr 
+                        const arr = []; 
 
-                        res.forEach(({ first_name, last_name })=>{
-                            nameArr.push(first_name+' '+last_name)
-                        })
-                        return nameArr
-                    }
-                }
-            ])
-            .then((data)=>{
-                console.log(data)
-                res.forEach((emp_info) =>{
-                    const dbQuery = emp_info.first_name.toLowerCase()+ ' '+emp_info.last_name.toLowerCase();
-                    const inqAns = data.mgrFullName.toLowerCase()
-                    if(dbQuery===inqAns){
-                        db.query(mgrTotQuery, 
-                            emp_info.id,
-                            (err, res)=>{
-                                if(err) throw err;
-                                console.table(res);
-                            })
-            
-                    }
-                })
-            })
-        });
-        // db.end(); ends fn before query can fire
-};
-
-// const viewFn = (dbTable, column, sqlQuery) => {
-
-//     db.query(`SELECT * FROM ${dbTable}`, // var 1
-//     (err, res)=>{
-//         x=column;
-//         if(err)throw err;
-//         console.log(res)
-//         inquirer
-//             .prompt([
-//                 {
-//                     type: 'rawlist',
-//                     name: dbTable, //var 1
-//                     message: `Select ${dbTable} to view`, //var 1
-//                     choices(){
-//                         const arr = []; 
-
-//                         res.forEach(({ x })=>{ //var 2
-//                             arr.push( x ) //var 2
-//                         })
-//                         return arr
-//                     }
-//                 }
-//             ])
-//             .then((data)=>{
-//                 console.log(data)
-//                 res.forEach((dbTable) =>{ //var 1
-//                     if(dbTable[x]===data[dbTable]){//var 1 .. var 1
-//                         db.query(sqlQuery, //var 3
-//                             data.dbTable, //var 1
-//                             (err, res)=>{
-//                                 if(err) throw err;
-//                                 console.table(res);
-//                             })
-            
-//                     }
-//                 })
-//             })
-//             .catch((err)=>{if(err) throw err})
-//         });
-//         // db.end(); ends fn before query can fire
-// };
-
-/*consolodate w/ rolesfn*/
-const viewDept = () => {
-    db.query(`SELECT * FROM dept`, 
-    (err, res)=>{
-        if(err)throw err;
-        inquirer
-            .prompt([
-                {
-                    type: 'rawlist',
-                    name: 'dept',
-                    message: 'Select dept to view',
-                    choices(){
-                        const arr = []; //add view all
-
-                        res.forEach(({ dept_name })=>{
-                            arr.push(dept_name)
+                        res.forEach(( x )=>{ //var 2 // look to edit fn
+                            switch(dbTable){
+                                case 'emp_info':
+                                    arr.push(`${x.first_name} ${x.last_name}`);
+                                    break;
+                                case 'dept':
+                                    arr.push(x.dept_name);
+                                    break;
+                                case 'roles':
+                                    arr.push(x.title);
+                                    break;
+                            }
+                            
                         })
                         return arr
                     }
                 }
             ])
             .then((data)=>{
-                console.log(data)
-                res.forEach((dept) =>{
-                    if(dept.dept_name===data.dept){
-                        db.query(deptTotQuery, 
-                            data.dept,
+                // console.log(data);
+
+                res.forEach((rows) =>{ //var 1
+                    let dbQuery;
+                switch(dbTable){
+                    case 'emp_info':
+                        dbQuery = `${rows.first_name} ${rows.last_name}`;
+                        break;
+                    case 'dept':
+                        dbQuery = rows.dept_name;
+                        break;
+                    case 'roles':
+                        dbQuery = rows.title;
+                        break;
+                };
+                    
+                    if(dbQuery===data[dbTable]){//var 1 .. var 1
+                        // console.log('true')
+                        db.query(sqlQueryTwo, //var 3
+                            rows.id, //var 1
                             (err, res)=>{
                                 if(err) throw err;
+                                console.log(res)
                                 console.table(res);
                             })
-            
+                        db.end();
                     }
                 })
             })
-        });
-        // db.end(); ends fn before query can fire
+            .catch((err)=>{if(err) throw err})
+    });
+
 };
-
-const viewRoles = () => {
-    db.query(`SELECT * FROM roles`, 
-    (err, res)=>{
-        if(err)throw err;
-        inquirer
-            .prompt([
-                {
-                    type: 'rawlist',
-                    name: 'roles',
-                    message: 'Select roles to view',
-                    choices(){
-                        const arr = []; //add view all mgr 
-
-                        res.forEach(({ title })=>{
-                            arr.push(title)
-                        })
-                        return arr
-                    }
-                }
-            ])
-            .then((data)=>{
-                console.log(data)
-                res.forEach((roles) =>{
-                    if(roles.title===data.roles){
-                        db.query(rolesTotQuery, 
-                            data.roles,
-                            (err, res)=>{
-                                if(err) throw err;
-                                console.table(res);
-                            })
-            
-                    }
-                })
-            })
-        });
-        // db.end(); ends fn before query can fire
-};
-
-const viewAllEmp = () => {
-    db.query(`SELECT * FROM emp_info`, 
-    (err, res)=>{
-        if(err)throw err;
-        inquirer
-            .prompt([
-                {
-                    type: 'rawlist',
-                    name: 'emp_info',
-                    message: 'Select employee to view',
-                    choices(){
-                        const arr = []; //add view all mgr 
-
-                        res.forEach(({ first_name, last_name })=>{
-                            arr.push(first_name+' '+last_name);
-                        });
-                        return arr
-                    }
-                }
-            ])
-            .then((data)=>{
-                console.log(data)
-                res.forEach((emp_info) =>{
-                    const dbQuery = emp_info.first_name.toLowerCase()+ ' '+emp_info.last_name.toLowerCase();
-                    const inqAns = data.emp_info.toLowerCase()
-                    if(dbQuery===inqAns){
-                        db.query(allEmpTotQuery,
-                            emp_info.id,
-                            (err, res)=>{
-                                if(err) throw err;
-                                console.table(res);
-                            })
-            
-                    }
-                })
-            })
-        });
-        // db.end(); ends fn before query can fire
-};
-
-const viewEmp = () => {
-    db.query(`SELECT * FROM emp_info WHERE manager_id`, 
-    (err, res)=>{
-        if(err)throw err;
-        inquirer
-            .prompt([
-                {
-                    type: 'rawlist',
-                    name: 'emp_info',
-                    message: 'Select employee to view',
-                    choices(){
-                        const arr = []; //add view all mgr 
-
-                        res.forEach(({ first_name, last_name })=>{
-                            arr.push(first_name+' '+last_name)
-                        })
-                        return arr
-                    }
-                }
-            ])
-            .then((data)=>{
-                console.log(data)
-                res.forEach((emp_info) =>{
-                    const dbQuery = emp_info.first_name.toLowerCase()+ ' ' +emp_info.last_name.toLowerCase();
-                    const inqAns = data.emp_info.toLowerCase()
-                    if(dbQuery===inqAns){
-                        db.query(allEmpTotQuery, 
-                            emp_info.id,
-                            (err, res)=>{
-                                if(err) throw err;
-                                console.table(res);
-                            })
-                    }
-                })
-                db.end(); 
-            })
-        });
-       
-        //ends fn before query can fire
-};
-
-// const viewBy = (cat) => {
-//     db.query(cat,
-        
-//     (err, res)=>{
-//         if(err)throw err;
-//         console.log(res);
-//         console.table(res);
-//     });
-//     db.end();
-// };
-
-//edit or view -> edit -> table to edit -> 
 
 const editTable = (action, table) => {
     console.log(action, table);
@@ -387,17 +196,14 @@ const editTable = (action, table) => {
     } else if (table==='roles'){
         tabIdent = 'title';
     } else if(table==='emp_info'){
-        tabIdent = 'first_name, last_name',
-        empTabIdent = ['first_name']['last_name'];
+        tabIdent = 'first_name, last_name';
     }
 
   
     db.query(`SELECT ${ tabIdent } FROM ${ table }`,
-    // [tabIdent, table],
     (err, res) => {
         if(err) throw err;
-        
-        console.log('line  384 ' + tabIdent+' '+table)
+
         inquirer
             .prompt([
                 {
@@ -409,7 +215,6 @@ const editTable = (action, table) => {
                         arr = [];
 
                         res.forEach(( x )=>{
-                            console.log(x);
 
                             switch(table){
                                 case 'emp_info':
@@ -433,7 +238,6 @@ const editTable = (action, table) => {
                 // table,
                 (err, res) => {
                     if(err) throw err;
-                    console.log(res)
                     inquirer
                     .prompt([
                         {
@@ -444,7 +248,7 @@ const editTable = (action, table) => {
                                 const arr = [];
                                 
                                 res.forEach(({ COLUMN_NAME }) => {
-                                    console.log(COLUMN_NAME);
+                                    console.log( COLUMN_NAME );
                                     arr.push( COLUMN_NAME );
                                 })
                                 arr.shift();
@@ -452,7 +256,7 @@ const editTable = (action, table) => {
                             }
                         }
                     ]).then((data)=>{
-                        
+
                     }).catch((err)=>{if(err) throw err})
                 })
             }).catch((err)=>{if(err) throw err})
