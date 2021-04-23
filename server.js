@@ -1,5 +1,4 @@
 //TODO
-//add method to view all
 //add start to end of fns
 //add view saleries opt
 //emp titles on all mgr query
@@ -35,7 +34,7 @@ INNER JOIN roles r
 INNER JOIN dept d
 	ON emp.dept_id = d.id`
 
-    const empTotQueryAll = `SELECT emp.first_name, emp.last_name, r.title, emp.id AS employee_id, r.salary, d.dept_name, concat(mgr.first_name,' ', mgr.last_name) AS manager  
+const empTotQueryAll = `SELECT emp.first_name, emp.last_name, r.title, emp.id AS employee_id, r.salary, d.dept_name, concat(mgr.first_name,' ', mgr.last_name) AS manager  
     FROM emp_info emp
     LEFT JOIN emp_info  mgr
         ON emp.manager_id = mgr.id

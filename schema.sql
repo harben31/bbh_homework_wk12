@@ -29,7 +29,7 @@ CREATE TABLE emp_info(
 );
 
 
-INSERT INTO dept (dept_name
+INSERT INTO dept (dept_name)
 VALUES ("accounting"),  ("engineering"), ("legal");
 
 INSERT INTO roles (title, dept_id, manager_id, salary)
@@ -47,17 +47,27 @@ SELECT * FROM dept;
 SELECT * FROM roles;
 SELECT * FROM emp_info; 
 
+SELECT * FROM roles WHERE 1=0;
+
+SELECT COLUMN_NAME
+FROM INFORMATION_SCHEMA.COLUMNS
+WHERE TABLE_NAME = N'roles';
+
 SELECT * FROM emp_info WHERE manager_id IS NULL;
 
-SELECT e.id, e.first_name, e.last_name, r.title, r.salary, d.dept_name 
-FROM emp_info AS e 
-INNER JOIN dept AS d 
-	ON e.dept_id = d.id
-INNER JOIN roles AS r
-	ON d.id = r.dept_id;
+--query to display one of all emp
+SELECT emp.first_name, emp.last_name, r.title, emp.id AS employee_id, r.salary, d.dept_name, concat(mgr.first_name,' ', mgr.last_name) AS manager  
+FROM emp_info emp
+LEFT JOIN emp_info  mgr
+	ON emp.manager_id = mgr.id
+INNER JOIN roles r
+	ON emp.role_id = r.id
+INNER JOIN dept d
+	ON emp.dept_id = d.id
+WHERE emp.id = ?;
 
-	
-SELECT emp.first_name, emp.last_name, r.title, r.salary, d.dept_name, concat(mgr.first_name,' ', mgr.last_name) AS manager  
+--query to display all employees at once
+SELECT emp.first_name, emp.last_name, r.title, emp.id AS employee_id, r.salary, d.dept_name, concat(mgr.first_name,' ', mgr.last_name) AS manager  
 FROM emp_info emp
 LEFT JOIN emp_info  mgr
 	ON emp.manager_id = mgr.id
@@ -65,9 +75,9 @@ INNER JOIN roles r
 	ON emp.role_id = r.id
 INNER JOIN dept d
 	ON emp.dept_id = d.id;
-	
-
-SELECT emp.first_name, emp.last_name, r.title, r.salary, d.dept_name, concat(mgr.first_name,' ', mgr.last_name) AS manager  
+    
+--query to display one non mgr employee by id
+SELECT emp.first_name, emp.last_name, r.title, emp.id AS employee_id, r.salary, d.dept_name, concat(mgr.first_name,' ', mgr.last_name) AS manager  
 FROM emp_info emp
 LEFT JOIN emp_info  mgr
 	ON emp.manager_id = mgr.id
@@ -75,24 +85,59 @@ INNER JOIN roles r
 	ON emp.role_id = r.id
 INNER JOIN dept d
 	ON emp.dept_id = d.id
-WHERE emp.manager_id IS NULL;
+WHERE emp.manager_id;
 
-
-
-SELECT d.dept_name, concat(mgr.first_name,' ', mgr.last_name) AS dept_manager, concat(emp.first_name, emp.last_name) AS dept_employees  
-FROM emp_info emp
-LEFT JOIN emp_info  mgr
-	ON emp.manager_id = mgr.id
-INNER JOIN dept d
-	ON emp.dept_id = d.id
-WHERE d.dept_name = 'legal';
-
-SELECT concat(mgr.first_name,' ', mgr.last_name) AS manager, d.dept_name, concat(emp.first_name, ' ', emp.last_name, r.title) AS subordinates   
+--query to display one mgr by id
+SELECT concat(mgr.first_name,' ', mgr.last_name) AS manager, d.dept_name, r.title, mgr.id AS manager_id, concat(emp.first_name, ' ', emp.last_name, ' ', r.title) AS subordinates   
 FROM emp_info emp
 RIGHT JOIN emp_info  mgr
 	ON emp.manager_id = mgr.id
 INNER JOIN roles r
-	ON emp.role_id = r.id
+	ON mgr.role_id = r.id
 INNER JOIN dept d
 	ON emp.dept_id = d.id
-WHERE mgr.id = 1;
+WHERE mgr.id = ?;
+
+--query to display all mgrs
+SELECT concat(mgr.first_name,' ', mgr.last_name) AS manager, d.dept_name, r.title, mgr.id AS manager_id, concat(emp.first_name, ' ', emp.last_name) AS subordinates   
+FROM emp_info emp
+INNER JOIN emp_info  mgr
+	ON emp.manager_id = mgr.id
+INNER JOIN roles r
+	ON mgr.role_id = r.id
+INNER JOIN dept d
+	ON emp.dept_id = d.id
+WHERE mgr.manager_id IS NULL
+ORDER BY manager;
+
+--query to display one roll w/ employees
+SELECT  r.title, r.salary, concat(emp.first_name, ' ', emp.last_name) AS employees, emp.id AS employee_id   
+FROM emp_info emp
+INNER JOIN roles r
+	ON emp.role_id = r.id
+WHERE r.id = ?;
+
+--query to display all roles w/employees
+SELECT  r.title, r.salary, concat(emp.first_name, ' ', emp.last_name) AS employees, emp.id AS employee_id   
+FROM emp_info emp
+INNER JOIN roles r
+	ON emp.role_id = r.id
+ORDER BY r.id;
+
+--query to display one dept w/ employees
+SELECT d.dept_name, concat(mgr.first_name,' ', mgr.last_name) AS dept_manager, concat(emp.first_name, ' ', emp.last_name) AS dept_employees, emp.id AS employee_id
+FROM emp_info emp
+LEFT JOIN emp_info  mgr
+	ON emp.manager_id = mgr.id
+INNER JOIN dept d
+	ON emp.dept_id = d.id
+WHERE d.id = ?;
+
+--query to display all depts w/ employees
+SELECT d.dept_name, concat(mgr.first_name,' ', mgr.last_name) AS dept_manager, concat(emp.first_name, ' ', emp.last_name) AS dept_employees, emp.id AS employee_id
+FROM emp_info emp
+LEFT JOIN emp_info  mgr
+	ON emp.manager_id = mgr.id
+INNER JOIN dept d
+	ON emp.dept_id = d.id
+ORDER BY d.dept_name;
