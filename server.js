@@ -6,11 +6,7 @@
 
 const inquirer = require('inquirer');
 const mysql = require('mysql');
-const cTable = require('console.table')
-
-const Employee = require('./lib/employee');
-const Role = require('./lib/role')
-const Department = require('./lib/department');
+const cTable = require('console.table');
 
 const db = mysql.createConnection({
     host: 'localhost',
@@ -39,6 +35,16 @@ INNER JOIN roles r
 INNER JOIN dept d
 	ON emp.dept_id = d.id`
 
+    const empTotQueryAll = `SELECT emp.first_name, emp.last_name, r.title, emp.id AS employee_id, r.salary, d.dept_name, concat(mgr.first_name,' ', mgr.last_name) AS manager  
+    FROM emp_info emp
+    LEFT JOIN emp_info  mgr
+        ON emp.manager_id = mgr.id
+    INNER JOIN roles r
+        ON emp.role_id = r.id
+    INNER JOIN dept d
+        ON emp.dept_id = d.id
+    WHERE emp.manager_id`
+
 const mgrTotQuery = `SELECT concat(mgr.first_name,' ', mgr.last_name) AS manager, d.dept_name, r.title, mgr.id AS manager_id, concat(emp.first_name, ' ', emp.last_name, ' ', r.title) AS subordinates   
 FROM emp_info emp
 RIGHT JOIN emp_info  mgr
@@ -60,13 +66,13 @@ INNER JOIN dept d
 WHERE mgr.manager_id IS NULL
 ORDER BY manager`
 
-const rolesTotQuery = `SELECT  r.title, concat(emp.first_name, ' ', emp.last_name) AS employees, emp.id AS employee_id   
+const rolesTotQuery = `SELECT  r.title, r.salary, concat(emp.first_name, ' ', emp.last_name) AS employees, emp.id AS employee_id   
 FROM emp_info emp
 INNER JOIN roles r
 	ON emp.role_id = r.id
 WHERE r.id = ?;`
 
-const rolesTotQueryAll = `SELECT  r.title, concat(emp.first_name, ' ', emp.last_name) AS employees, emp.id AS employee_id   
+const rolesTotQueryAll = `SELECT  r.title, r.salary, concat(emp.first_name, ' ', emp.last_name) AS employees, emp.id AS employee_id   
 FROM emp_info emp
 INNER JOIN roles r
 	ON emp.role_id = r.id
@@ -133,7 +139,7 @@ const viewRoster = () => {
         } else if(data.viewBy==='by_role'){
             viewFn('roles', `SELECT * FROM roles` , rolesTotQuery, rolesTotQueryAll);
         } else if(data.viewBy==='by_employee'){
-            viewFn('emp_info', `SELECT * FROM emp_info WHERE manager_id`, allEmpTotQuery);
+            viewFn('emp_info', `SELECT * FROM emp_info WHERE manager_id`, allEmpTotQuery, empTotQueryAll);
         } else {
             viewFn('emp_info', `SELECT * FROM emp_info`, allEmpTotQuery, allEmpTotQueryAll);
         }
@@ -147,7 +153,6 @@ const viewFn = (dbTable, sqlQueryOne, sqlQueryTwo, sqlQueryThree) => {
     db.query(sqlQueryOne, // var 1
     (err, res)=>{
         if(err)throw err;
-        console.log(res)
         inquirer
             .prompt([
                 {
@@ -176,42 +181,40 @@ const viewFn = (dbTable, sqlQueryOne, sqlQueryTwo, sqlQueryThree) => {
                 }
             ])
             .then((data)=>{
-                // console.log(data);
 
-                res.forEach((rows) =>{ //var 1
+                if(data[dbTable]==='view all'){
+                    db.query(sqlQueryThree, 
+                        (err, res)=>{
+                            if(err) throw err;
+                            console.table(res);
+                        });
+                    };
+
+                res.forEach((rows) =>{
                     let dbQuery;
-                switch(dbTable){
-                    case 'emp_info':
-                        dbQuery = `${rows.first_name} ${rows.last_name}`;
-                        break;
-                    case 'dept':
-                        dbQuery = rows.dept_name;
-                        break;
-                    case 'roles':
-                        dbQuery = rows.title;
-                        break;
-                };
+                    switch(dbTable){
+                        case 'emp_info':
+                            dbQuery = `${rows.first_name} ${rows.last_name}`;
+                            break;
+                        case 'dept':
+                            dbQuery = rows.dept_name;
+                            break;
+                        case 'roles':
+                            dbQuery = rows.title;
+                            break;
+                    };
                     
-                    if(dbQuery===data[dbTable]){//var 1 .. var 1
-                        db.query(sqlQueryTwo, //var 3
-                            rows.id, //var 1
+                    if(dbQuery===data[dbTable]){
+                        db.query(sqlQueryTwo,
+                            rows.id,
                             (err, res)=>{
                                 if(err) throw err;
-                                console.log(res)
                                 console.table(res);
                             })
-                    } else {
-                        db.query(sqlQueryThree, //var 3
-                            rows.id, //var 1
-                            (err, res)=>{
-                                if(err) throw err;
-                                console.log(res)
-                                console.table(res);
-                            })
-                        }
-                    })
-                    db.end();
-                    // start();
+                    }
+                })
+                db.end();
+                // start();
             })
             .catch((err)=>{if(err) throw err})
     });
@@ -253,7 +256,6 @@ const editRoster = () => {
             tabVar = 'emp_info'
         } 
 
-        console.log(tabVar)
         editTable(data.editType, tabVar)
     })
     .catch((err)=>{if(err)throw err});
@@ -261,7 +263,6 @@ const editRoster = () => {
 
 //2nd edit fn delegates thr add fn; narrows to row id; delegates delete; passes row id to update, 
 const editTable = (action, table) => { //1st fn
-    console.log(action, table);
 
     let tabIdent;
     let empTabIdent;
@@ -274,8 +275,6 @@ const editTable = (action, table) => { //1st fn
     }
 
     let rowSelectQuest;
-
-    console.log(action)
     
     if(action==='add_to'){
         addFn(table);
@@ -334,7 +333,6 @@ const editTable = (action, table) => { //1st fn
                 };
                     
                     if(dbQuery===data.rowSelect){//var 1 .. var 1
-                        // console.log('true')
 
                         if(action==='delete_from'){
                             deleteFn(table, rows.id);
@@ -354,7 +352,6 @@ const colPickFn = (tbl, id) => {
     db.query(`SELECT COLUMN_NAME  
             FROM INFORMATION_SCHEMA.COLUMNS
             WHERE TABLE_NAME = N'${tbl}'; `,
-            // table,
             (err, res) => {
                 if(err) throw err;
                 inquirer
@@ -367,7 +364,6 @@ const colPickFn = (tbl, id) => {
                             const arr = [];
                             
                             res.forEach(({ COLUMN_NAME }) => {
-                                console.log( COLUMN_NAME );
                                 arr.push( COLUMN_NAME );
                             })
                             arr.shift();
@@ -417,7 +413,6 @@ const deleteFn = (tbl, rowId) => {
     db.query(`DELETE FROM ${tbl} WHERE id=${rowId}`,
     (err, res) => {
         if(err) throw err;
-        console.log(res)
     });
     // start();
     db.end();
@@ -428,7 +423,6 @@ const addFn = (tbl) => {
 
     let addQuest;
     
-
     if(tbl==='roles'){
         addQuest = [{
             type: 'input',
@@ -502,8 +496,8 @@ const addFn = (tbl) => {
                 message: 'Enter name of new department'
             },
         ];
-    }
-    console.log(addQuest)
+    };
+
     inquirer
         .prompt(
             addQuest
@@ -530,8 +524,7 @@ const addFn = (tbl) => {
             db.query(addQuery,
                 (err, res)=>{
                     if(err) throw err;
-                    console.log(res)
-                })
+                });
                 // start();
                 db.end();           
         }).catch((err)=>{if(err) throw err})
