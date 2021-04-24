@@ -2,6 +2,7 @@
 //add start to end of fns
 //add view saleries opt
 //emp titles on all mgr query
+//make dept & role ?'s choices not number
 
 const inquirer = require('inquirer');
 const mysql = require('mysql');
@@ -16,14 +17,14 @@ const db = mysql.createConnection({
 });
 
 const allEmpTotQuery = `SELECT emp.first_name, emp.last_name, r.title, emp.id AS employee_id, r.salary, d.dept_name, concat(mgr.first_name,' ', mgr.last_name) AS manager  
-FROM emp_info emp
-LEFT JOIN emp_info  mgr
-	ON emp.manager_id = mgr.id
-INNER JOIN roles r
-	ON emp.role_id = r.id
-INNER JOIN dept d
-	ON emp.dept_id = d.id
-WHERE emp.id = ?;`
+    FROM emp_info emp
+    LEFT JOIN emp_info  mgr
+        ON emp.manager_id = mgr.id
+    INNER JOIN roles r
+        ON emp.role_id = r.id
+    INNER JOIN dept d
+        ON emp.dept_id = d.id
+    WHERE emp.id = ?;`
 
 const allEmpTotQueryAll = `SELECT emp.first_name, emp.last_name, r.title, emp.id AS employee_id, r.salary, d.dept_name, concat(mgr.first_name,' ', mgr.last_name) AS manager  
 FROM emp_info emp
@@ -45,53 +46,53 @@ const empTotQueryAll = `SELECT emp.first_name, emp.last_name, r.title, emp.id AS
     WHERE emp.manager_id`
 
 const mgrTotQuery = `SELECT concat(mgr.first_name,' ', mgr.last_name) AS manager, d.dept_name, r.title, mgr.id AS manager_id, concat(emp.first_name, ' ', emp.last_name, ' ', r.title) AS subordinates   
-FROM emp_info emp
-RIGHT JOIN emp_info  mgr
-	ON emp.manager_id = mgr.id
-INNER JOIN roles r
-	ON mgr.role_id = r.id
-INNER JOIN dept d
-	ON emp.dept_id = d.id
-WHERE mgr.id = ?;`
+    FROM emp_info emp
+    RIGHT JOIN emp_info  mgr
+        ON emp.manager_id = mgr.id
+    INNER JOIN roles r
+        ON mgr.role_id = r.id
+    INNER JOIN dept d
+        ON emp.dept_id = d.id
+    WHERE mgr.id = ?;`
 
 const mgrTotQueryAll = `SELECT concat(mgr.first_name,' ', mgr.last_name) AS manager, d.dept_name, r.title, mgr.id AS manager_id, concat(emp.first_name, ' ', emp.last_name) AS subordinates   
-FROM emp_info emp
-INNER JOIN emp_info  mgr
-	ON emp.manager_id = mgr.id
-INNER JOIN roles r
-	ON mgr.role_id = r.id
-INNER JOIN dept d
-	ON emp.dept_id = d.id
-WHERE mgr.manager_id IS NULL
-ORDER BY manager`
+    FROM emp_info emp
+    INNER JOIN emp_info  mgr
+        ON emp.manager_id = mgr.id
+    INNER JOIN roles r
+        ON mgr.role_id = r.id
+    INNER JOIN dept d
+        ON emp.dept_id = d.id
+    WHERE mgr.manager_id IS NULL
+    ORDER BY manager`
 
 const rolesTotQuery = `SELECT  r.title, r.salary, concat(emp.first_name, ' ', emp.last_name) AS employees, emp.id AS employee_id   
-FROM emp_info emp
-INNER JOIN roles r
-	ON emp.role_id = r.id
-WHERE r.id = ?;`
+    FROM emp_info emp
+    INNER JOIN roles r
+        ON emp.role_id = r.id
+    WHERE r.id = ?;`
 
 const rolesTotQueryAll = `SELECT  r.title, r.salary, concat(emp.first_name, ' ', emp.last_name) AS employees, emp.id AS employee_id   
-FROM emp_info emp
-INNER JOIN roles r
-	ON emp.role_id = r.id
-ORDER BY r.id`
+    FROM emp_info emp
+    INNER JOIN roles r
+        ON emp.role_id = r.id
+    ORDER BY r.id`
 
 const deptTotQuery = `SELECT d.dept_name, concat(mgr.first_name,' ', mgr.last_name) AS dept_manager, concat(emp.first_name, ' ', emp.last_name) AS dept_employees, emp.id AS employee_id
-FROM emp_info emp
-LEFT JOIN emp_info  mgr
-	ON emp.manager_id = mgr.id
-INNER JOIN dept d
-	ON emp.dept_id = d.id
-WHERE d.id = ?;`
+    FROM emp_info emp
+    LEFT JOIN emp_info  mgr
+        ON emp.manager_id = mgr.id
+    INNER JOIN dept d
+        ON emp.dept_id = d.id
+    WHERE d.id = ?;`
 
 const deptTotQueryAll = `SELECT d.dept_name, concat(mgr.first_name,' ', mgr.last_name) AS dept_manager, concat(emp.first_name, ' ', emp.last_name) AS dept_employees, emp.id AS employee_id
-FROM emp_info emp
-LEFT JOIN emp_info  mgr
-	ON emp.manager_id = mgr.id
-INNER JOIN dept d
-	ON emp.dept_id = d.id
-ORDER BY d.dept_name`
+    FROM emp_info emp
+    LEFT JOIN emp_info  mgr
+        ON emp.manager_id = mgr.id
+    INNER JOIN dept d
+        ON emp.dept_id = d.id
+    ORDER BY d.dept_name`
 
 //kick off  fn; delegates to edit fns or view fns per user input
 const start = ()=>{
@@ -209,13 +210,16 @@ const viewFn = (dbTable, sqlQueryOne, sqlQueryTwo, sqlQueryThree) => {
                             (err, res)=>{
                                 if(err) throw err;
                                 console.table(res);
+                                // start();
                             })
                     }
-                })
-                db.end();
-                // start();
-            })
-            .catch((err)=>{if(err) throw err})
+                });
+
+                setTimeout(()=>{
+                    start();
+                }, 1000)
+                // db.end();             
+            }).catch((err)=>{if(err) throw err})
     });
 
 };
@@ -403,7 +407,8 @@ const colEditFn = (dta, tbl, id) => {
             db.query(`UPDATE ${tbl} SET ${dta} = '${data.colChange}' WHERE ${tbl}.id = ${id}`, (err, res) => {
                 if(err) throw err;
             })
-            db.end();
+            // db.end();
+            start();
         }).catch((err)=>{if(err) throw err})
 };
 
@@ -413,8 +418,8 @@ const deleteFn = (tbl, rowId) => {
     (err, res) => {
         if(err) throw err;
     });
-    // start();
-    db.end();
+    start();
+    // db.end();
 };
 
 //6th edit fn; 1st & LAST add fn; prompts user to input data given the table specified; queries db to add
@@ -452,7 +457,6 @@ const addFn = (tbl) => {
         }]
 
         
-
     } else if (tbl==='emp_info'){
         addQuest = [{
             type: 'input',
@@ -493,7 +497,7 @@ const addFn = (tbl) => {
                 type: 'input',
                 name: 'newDept',
                 message: 'Enter name of new department'
-            },
+            }
         ];
     };
 
@@ -524,8 +528,8 @@ const addFn = (tbl) => {
                 (err, res)=>{
                     if(err) throw err;
                 });
-                // start();
-                db.end();           
+                start();
+                // db.end();           
         }).catch((err)=>{if(err) throw err})
 };
 
