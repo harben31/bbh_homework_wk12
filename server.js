@@ -1,8 +1,8 @@
 //TODO
-//add start to end of fns
 //add view saleries opt
 //emp titles on all mgr query
 //make dept & role ?'s choices not number
+//validation
 
 const inquirer = require('inquirer');
 const mysql = require('mysql');
@@ -217,7 +217,7 @@ const viewFn = (dbTable, sqlQueryOne, sqlQueryTwo, sqlQueryThree) => {
 
                 setTimeout(()=>{
                     start();
-                }, 1000)
+                }, 500)
                 // db.end();             
             }).catch((err)=>{if(err) throw err})
     });
