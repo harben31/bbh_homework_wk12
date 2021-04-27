@@ -8,6 +8,8 @@ Table of Contents:
 * [Technologies_used](#Technologies_used)
 * [License-Info](#License-Info)
 * [Questions](#Questions)
+
+[Walk_through_video](https://drive.google.com/file/d/1CTg6IHcfGdUoj2ILKhESoH6nAACPpzdV/view)
     
 ## Contributors: 
 Ben Harris
